@@ -31,7 +31,7 @@ contract StakingThales is IStakingThales, Owned, ReentrancyGuard, Pausable {
     uint public currentPeriodRewards = 0;
     uint public currentPeriodFees = 0;
     bool public distributeFeesEnabled = false;
-    uint public fixedPeriodReward = 100000 * 1e18;
+    uint public fixedPeriodReward = 100000;
     bool public claimEnabled = false;
 
     mapping(address => uint) public stakerLifetimeRewardsClaimed;
@@ -51,6 +51,8 @@ contract StakingThales is IStakingThales, Owned, ReentrancyGuard, Pausable {
     mapping(address => uint) private _lastStakingPeriod;
     mapping(address => uint) private _lastRewardsClaimedPeriod;
 
+    mapping(address => uint) private _pendingStakeBalances;
+    mapping(address => uint) private _escrowedBalances;
     /* ========== CONSTRUCTOR ========== */
 
     constructor(
@@ -77,6 +79,10 @@ contract StakingThales is IStakingThales, Owned, ReentrancyGuard, Pausable {
 
     function stakedBalanceOf(address account) external view returns (uint) {
         return _stakedBalances[account];
+    }
+    
+    function escrowedBalanceOf(address account) external view returns (uint) {
+        return _escrowedBalances[account];
     }
 
     function getLastPeriodOfClaimedRewards(address account) external view returns (uint) {
@@ -169,7 +175,12 @@ contract StakingThales is IStakingThales, Owned, ReentrancyGuard, Pausable {
         lastPeriodTimeStamp = block.timestamp;
         periodsOfStaking = iEscrowThales.currentVestingPeriod();
 
-        _totalEscrowedAmount = iEscrowThales.totalEscrowedRewards();
+        if (_totalPendingStakeAmount > 0) {
+            _totalEscrowedAmount = _totalEscrowedAmount.add(_totalPendingStakeAmount);
+            _totalPendingStakeAmount = 0;
+        }
+
+        // _totalEscrowedAmount = iEscrowThales.totalEscrowedRewards();
 
         //Actions taken on every closed period
         currentPeriodRewards = fixedPeriodReward;
@@ -233,6 +244,12 @@ contract StakingThales is IStakingThales, Owned, ReentrancyGuard, Pausable {
         require(claimEnabled, "Claiming is not enabled.");
         require(startTimeStamp > 0, "Staking period has not started");
 
+
+        if (_pendingStakeBalances[msg.sender] > 0) {
+            _escrowedBalances[msg.sender] = _escrowedBalances[msg.sender].add(_pendingStakeBalances[msg.sender]);
+            _pendingStakeBalances[msg.sender] = 0;
+        }
+
         //Calculate rewards
         if (distributeFeesEnabled) {
             uint availableFeesToClaim = _calculateAvailableFeesToClaim(msg.sender);
@@ -246,6 +263,10 @@ contract StakingThales is IStakingThales, Owned, ReentrancyGuard, Pausable {
         uint availableRewardsToClaim = _calculateAvailableRewardsToClaim(msg.sender);
         if (availableRewardsToClaim > 0) {
             _lastStakingPeriod[msg.sender] = periodsOfStaking;
+            
+            //Escrowed amounts taken into consideration in the next period:
+            _totalPendingStakeAmount = _totalPendingStakeAmount.add(availableRewardsToClaim);
+            _pendingStakeBalances[msg.sender] =  _pendingStakeBalances[msg.sender].add(availableRewardsToClaim);
             // Transfer THALES to Escrow contract
             iEscrowThales.addToEscrow(msg.sender, availableRewardsToClaim);
             // Record the total claimed rewards
@@ -277,7 +298,7 @@ contract StakingThales is IStakingThales, Owned, ReentrancyGuard, Pausable {
         }
         return
             _stakedBalances[account]
-                .add(iEscrowThales.getStakedEscrowedBalanceForRewards(account))
+                .add(_escrowedBalances[account].add(_pendingStakeBalances[account]))
                 .mul(currentPeriodRewards)
                 .div(_totalStakedAmount.add(_totalEscrowedAmount));
     }
@@ -288,7 +309,7 @@ contract StakingThales is IStakingThales, Owned, ReentrancyGuard, Pausable {
         require(_lastRewardsClaimedPeriod[account] < periodsOfStaking, "Rewards already claimed for last period");
         return
             _stakedBalances[account]
-                .add(iEscrowThales.getStakedEscrowedBalanceForRewards(account))
+                .add(_escrowedBalances[account].add(_pendingStakeBalances[account]))
                 .mul(currentPeriodFees)
                 .div(_totalStakedAmount.add(_totalEscrowedAmount));
     }
