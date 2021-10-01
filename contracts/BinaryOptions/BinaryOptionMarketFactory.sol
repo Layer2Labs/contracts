@@ -6,7 +6,8 @@ import "synthetix-2.43.1/contracts/Owned.sol";
 
 // Internal references
 import "./BinaryOptionMarket.sol";
-import "synthetix-2.43.1/contracts/interfaces/IAddressResolver.sol";
+import "synthetix-2.43.1/contracts/interfaces/IExchangeRates.sol";
+import "synthetix-2.43.1/contracts/interfaces/IERC20.sol";
 
 contract BinaryOptionMarketFactory is MinimalProxyFactory, Owned {
     /* ========== STATE VARIABLES ========== */
@@ -22,7 +23,8 @@ contract BinaryOptionMarketFactory is MinimalProxyFactory, Owned {
 
     function createMarket(
         address creator,
-        IAddressResolver _resolver,
+        IERC20 sUSD,
+        IExchangeRates exchangeRates,
         bytes32 oracleKey,
         uint strikePrice,
         uint[2] calldata times, // [maturity, expiry]
@@ -33,14 +35,14 @@ contract BinaryOptionMarketFactory is MinimalProxyFactory, Owned {
     ) external returns (BinaryOptionMarket) {
         require(binaryOptionMarketManager == msg.sender, "Only permitted by the manager.");
 
-        BinaryOptionMarket bom =
-            BinaryOptionMarket(
-                _cloneAsMinimalProxy(binaryOptionMarketMastercopy, "Could not create a Binary Option Market")
-            );
+        BinaryOptionMarket bom = BinaryOptionMarket(
+            _cloneAsMinimalProxy(binaryOptionMarketMastercopy, "Could not create a Binary Option Market")
+        );
         bom.initialize(
             binaryOptionMarketManager,
             binaryOptionMastercopy,
-            _resolver,
+            sUSD,
+            exchangeRates,
             creator,
             oracleKey,
             strikePrice,
