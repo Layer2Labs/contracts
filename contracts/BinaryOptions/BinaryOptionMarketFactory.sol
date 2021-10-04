@@ -8,8 +8,12 @@ import "synthetix-2.43.1/contracts/Owned.sol";
 import "./BinaryOptionMarket.sol";
 import "synthetix-2.43.1/contracts/interfaces/IExchangeRates.sol";
 import "synthetix-2.43.1/contracts/interfaces/IERC20.sol";
+import "../interfaces/IBinaryOptionMarket.sol";
 
-contract BinaryOptionMarketFactory is MinimalProxyFactory, Owned {
+import "synthetix-2.43.1/contracts/interfaces/IExchangeRates.sol";
+import "synthetix-2.43.1/contracts/interfaces/IERC20.sol";
+
+contract BinaryOptionMarketFactory is MinimalProxyFactory, Owned, IBinaryOptionMarket {
     /* ========== STATE VARIABLES ========== */
     address public binaryOptionMarketManager;
     address public binaryOptionMarketMastercopy;
@@ -39,18 +43,20 @@ contract BinaryOptionMarketFactory is MinimalProxyFactory, Owned {
             _cloneAsMinimalProxy(binaryOptionMarketMastercopy, "Could not create a Binary Option Market")
         );
         bom.initialize(
-            binaryOptionMarketManager,
-            binaryOptionMastercopy,
-            sUSD,
-            exchangeRates,
-            creator,
-            oracleKey,
-            strikePrice,
-            times,
-            initialMint,
-            fees,
-            customMarket,
-            customOracle
+            BomInitializeParams(
+                binaryOptionMarketManager,
+                binaryOptionMastercopy,
+                sUSD,
+                exchangeRates,
+                creator,
+                oracleKey,
+                strikePrice,
+                times,
+                initialMint,
+                fees,
+                customMarket,
+                customOracle
+            )
         );
         return bom;
     }

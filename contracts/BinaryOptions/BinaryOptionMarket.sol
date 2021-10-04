@@ -1,4 +1,5 @@
 pragma solidity ^0.5.16;
+pragma experimental ABIEncoderV2;
 
 // Inheritance
 import "synthetix-2.43.1/contracts/MinimalProxyFactory.sol";
@@ -73,43 +74,40 @@ contract BinaryOptionMarket is MinimalProxyFactory, OwnedWithInit, IBinaryOption
 
     bool public initialized = false;
 
-    function initialize(
-        address _owner,
-        address _binaryOptionMastercopy,
-        IERC20 _sUSD,
-        IExchangeRates _exchangeRates,
-        address _creator,
-        bytes32 _oracleKey,
-        uint _strikePrice,
-        uint[2] calldata _times, // [maturity, expiry]
-        uint _deposit, // sUSD deposit
-        uint[2] calldata _fees, // [poolFee, creatorFee]
-        bool _customMarket,
-        address _iOracleInstanceAddress
-    ) external {
+    function initialize(BomInitializeParams calldata _bomInitializeParams) external {
         require(!initialized, "Binary Option Market already initialized");
         initialized = true;
-        initOwner(_owner);
-        sUSD = _sUSD;
-        exchangeRates = _exchangeRates;
-        creator = _creator;
+        initOwner(_bomInitializeParams.owner);
+        sUSD = _bomInitializeParams.sUSD;
+        exchangeRates = _bomInitializeParams.exchangeRates;
+        creator = _bomInitializeParams.creator;
 
-        oracleDetails = OracleDetails(_oracleKey, _strikePrice, 0, _customMarket, _iOracleInstanceAddress);
-        customMarket = _customMarket;
-        iOracleInstance = IOracleInstance(_iOracleInstanceAddress);
+        oracleDetails = OracleDetails(
+            _bomInitializeParams.oracleKey,
+            _bomInitializeParams.strikePrice,
+            0,
+            _bomInitializeParams.customMarket,
+            _bomInitializeParams.iOracleInstanceAddress
+        );
+        customMarket = _bomInitializeParams.customMarket;
+        iOracleInstance = IOracleInstance(_bomInitializeParams.iOracleInstanceAddress);
 
-        times = Times(_times[0], _times[1]);
+        times = Times(_bomInitializeParams.times[0], _bomInitializeParams.times[1]);
 
-        deposited = _deposit;
-        initialMint = _deposit;
+        deposited = _bomInitializeParams.deposit;
+        initialMint = _bomInitializeParams.deposit;
 
-        (uint poolFee, uint creatorFee) = (_fees[0], _fees[1]);
+        (uint poolFee, uint creatorFee) = (_bomInitializeParams.fees[0], _bomInitializeParams.fees[1]);
         fees = BinaryOptionMarketManager.Fees(poolFee, creatorFee);
         _feeMultiplier = SafeDecimalMath.unit().sub(poolFee.add(creatorFee));
 
         // Instantiate the options themselves
-        options.long = BinaryOption(_cloneAsMinimalProxy(_binaryOptionMastercopy, "Could not create a Binary Option"));
-        options.short = BinaryOption(_cloneAsMinimalProxy(_binaryOptionMastercopy, "Could not create a Binary Option"));
+        options.long = BinaryOption(
+            _cloneAsMinimalProxy(_bomInitializeParams.binaryOptionMastercopy, "Could not create a Binary Option")
+        );
+        options.short = BinaryOption(
+            _cloneAsMinimalProxy(_bomInitializeParams.binaryOptionMastercopy, "Could not create a Binary Option")
+        );
         // abi.encodePacked("sLONG: ", _oracleKey)
         // consider naming the option: sLongBTC>50@2021.12.31
         options.long.initialize("Binary Option Long", "sLONG");

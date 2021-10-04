@@ -1,25 +1,43 @@
 pragma solidity >=0.4.24;
 
+import "synthetix-2.43.1/contracts/interfaces/IExchangeRates.sol";
+import "synthetix-2.43.1/contracts/interfaces/IERC20.sol";
 import "../interfaces/IBinaryOptionMarketManager.sol";
 import "../interfaces/IBinaryOption.sol";
 
 interface IBinaryOptionMarket {
     /* ========== TYPES ========== */
 
-    enum Phase {Trading, Maturity, Expiry}
-    enum Side {Long, Short}
+    enum Phase {
+        Trading,
+        Maturity,
+        Expiry
+    }
+    enum Side {
+        Long,
+        Short
+    }
+
+    struct BomInitializeParams {
+        address owner;
+        address binaryOptionMastercopy;
+        IERC20 sUSD;
+        IExchangeRates exchangeRates;
+        address creator;
+        bytes32 oracleKey;
+        uint strikePrice;
+        uint[2] times; // [maturity, expiry]
+        uint deposit; // sUSD deposit
+        uint[2] fees; // [poolFee, creatorFee]
+        bool customMarket;
+        address iOracleInstanceAddress;
+    }
 
     /* ========== VIEWS / VARIABLES ========== */
 
     function options() external view returns (IBinaryOption long, IBinaryOption short);
 
-    function times()
-        external
-        view
-        returns (
-            uint maturity,
-            uint destructino
-        );
+    function times() external view returns (uint maturity, uint destructino);
 
     function oracleDetails()
         external
@@ -30,13 +48,7 @@ interface IBinaryOptionMarket {
             uint finalPrice
         );
 
-    function fees()
-        external
-        view
-        returns (
-            uint poolFee,
-            uint creatorFee
-        );
+    function fees() external view returns (uint poolFee, uint creatorFee);
 
     function deposited() external view returns (uint);
 

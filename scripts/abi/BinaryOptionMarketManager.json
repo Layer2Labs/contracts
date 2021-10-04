@@ -7,8 +7,13 @@
         "type": "address"
       },
       {
-        "internalType": "contract IAddressResolver",
-        "name": "_resolver",
+        "internalType": "contract IERC20",
+        "name": "_sUSD",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IExchangeRates",
+        "name": "_exchangeRates",
         "type": "address"
       },
       {
@@ -472,6 +477,21 @@
     "type": "function"
   },
   {
+    "constant": true,
+    "inputs": [],
+    "name": "exchangeRates",
+    "outputs": [
+      {
+        "internalType": "contract IExchangeRates",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "constant": false,
     "inputs": [
       {
@@ -745,10 +765,10 @@
   {
     "constant": true,
     "inputs": [],
-    "name": "resolver",
+    "name": "sUSD",
     "outputs": [
       {
-        "internalType": "contract IAddressResolver",
+        "internalType": "contract IERC20",
         "name": "",
         "type": "address"
       }
