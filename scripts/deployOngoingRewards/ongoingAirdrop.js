@@ -18,7 +18,7 @@ const TOTAL_AMOUNT_TO_TRANSFER = web3.utils.toWei('225000');
 
 const fs = require('fs');
 
-let includeStakingRewards = true;
+let includeStakingRewards = false;
 
 async function ongoingAirdrop() {
 	let accounts = await ethers.getSigners();
@@ -59,7 +59,7 @@ async function ongoingAirdrop() {
 	// get stakers from StakingThales from last period
 	let stakers = [];
 	const stakingRewards = [];
-	if (STAKING_THALES && includeStakingRewards) {
+	if (STAKING_THALES) {
 		const stakingTimestamp = await stakingThales.startTimeStamp();
 		if (stakingTimestamp.toString() > 0) {
 			// check if staking has begun
@@ -85,37 +85,40 @@ async function ongoingAirdrop() {
 				console.log('closingDate', closingDate.getTime());
 
 				if (now.getTime() > closingDate.getTime()) {
-					let tx = await stakingThales.closePeriod();
-					await tx
-						.wait()
-						.then(e => {
-							console.log('StakingThales: period closed');
-						})
-						.catch(e => {
-							console.err(e);
-							return;
+					// TODO: close through gnosis
+					// let tx = await stakingThales.closePeriod();
+					// await tx
+					// 	.wait()
+					// 	.then(e => {
+					// 		console.log('StakingThales: period closed');
+					// 	})
+					// 	.catch(e => {
+					// 		console.err(e);
+					// 		return;
+					// 	});
+
+					if (includeStakingRewards) {
+						const stakedEvents = await stakingThalesContract.getPastEvents('Staked', {
+							fromBlock: 0,
+							toBlock: 'latest',
 						});
 
-					const stakedEvents = await stakingThalesContract.getPastEvents('Staked', {
-						fromBlock: 0,
-						toBlock: 'latest',
-					});
+						for (let i = 0; i < stakedEvents.length; ++i) {
+							stakers.push(stakedEvents[i].returnValues.user.toLowerCase());
+						}
 
-					for (let i = 0; i < stakedEvents.length; ++i) {
-						stakers.push(stakedEvents[i].returnValues.user.toLowerCase());
-					}
+						stakers = [...new Set(stakers)]; // ensure uniqueness
 
-					stakers = [...new Set(stakers)]; // ensure uniqueness
+						console.log('stakers', stakers);
 
-					console.log('stakers', stakers);
-
-					for (let staker of stakers) {
-						try {
-							const reward = await stakingThales.getRewardsAvailable(staker);
-							console.log('available rewards for ', staker, ' - ', reward.toString());
-							stakingRewards[staker.toLowerCase()] = parseInt(reward.toString());
-						} catch (e) {
-							continue; // rewards already claimed, continue
+						for (let staker of stakers) {
+							try {
+								const reward = await stakingThales.getRewardsAvailable(staker);
+								console.log('available rewards for ', staker, ' - ', reward.toString());
+								stakingRewards[staker.toLowerCase()] = parseInt(reward.toString());
+							} catch (e) {
+								continue; // rewards already claimed, continue
+							}
 						}
 					}
 				} else {
@@ -142,10 +145,11 @@ async function ongoingAirdrop() {
 	});
 
 	// pause ongoingAirdrop
-	let pauseTX = await ongoingAirdrop.setPaused(true);
-	await pauseTX.wait().then(e => {
-		txLog(pauseTX, 'Airdrop paused');
-	});
+	// TODO: pause through gnosis
+	// let pauseTX = await ongoingAirdrop.setPaused(true);
+	// await pauseTX.wait().then(e => {
+	// 	txLog(pauseTX, 'Airdrop paused');
+	// });
 
 	let totalScore = Big(0);
 	for (let value of Object.values(ongoingRewards)) {
@@ -283,17 +287,18 @@ async function ongoingAirdrop() {
 		userBalanceAndHashes[ubh].proof = merkleTree.getHexProof(userBalanceAndHashes[ubh].hash);
 	}
 
+	// TODO: all through gnosis
 	// ongoingAirdrop: set new tree root, unpause contract
-	let tx = await ongoingAirdrop.setRoot(root);
-	await tx.wait().then(e => {
-		txLog(tx, 'New root set');
-	});
-	pauseTX = await ongoingAirdrop.setPaused(false);
-	await pauseTX.wait().then(e => {
-		txLog(pauseTX, 'Airdrop unpaused');
-	});
+	// let tx = await ongoingAirdrop.setRoot(root);
+	// await tx.wait().then(e => {
+	// 	txLog(tx, 'New root set');
+	// });
+	// pauseTX = await ongoingAirdrop.setPaused(false);
+	// await pauseTX.wait().then(e => {
+	// 	txLog(pauseTX, 'Airdrop unpaused');
+	// });
 
-	ongoingPeriod = await ongoingAirdrop.period();
+	ongoingPeriod = (await ongoingAirdrop.period()) + 1;
 
 	fs.writeFileSync(
 		`scripts/deployOngoingRewards/ongoing-airdrop-hashes-period-${ongoingPeriod.toString()}.json`,
