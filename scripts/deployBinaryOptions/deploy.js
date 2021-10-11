@@ -4,6 +4,8 @@ const snx = require('synthetix');
 const { artifacts, contract, web3 } = require('hardhat');
 
 async function main() {
+	const sUSD = '0x57Ab1ec28D129707052df4dF418D58a2D46d5f51';
+
 	let accounts = await ethers.getSigners();
 	let owner = accounts[0];
 	let networkObj = await ethers.provider.getNetwork();
@@ -14,9 +16,6 @@ async function main() {
 
 	console.log('Account is:' + owner.address);
 	console.log('Network name:' + networkObj.name);
-
-	const addressResolver = snx.getTarget({ network, contract: 'ReadProxyAddressResolver' });
-	console.log('Found address resolver at:' + addressResolver.address);
 
 	const safeDecimalMath = snx.getTarget({ network, contract: 'SafeDecimalMath' });
 	console.log('Found safeDecimalMath at:' + safeDecimalMath.address);
@@ -62,6 +61,13 @@ async function main() {
 	const creatorFee = w3utils.toWei('0.005'); // 0.5% of the market's value goes to the creator.
 	const feeAddress = '0xfeefeefeefeefeefeefeefeefeefeefeefeefeef';
 
+	// deploy ExchangeRates contract
+	const ExchangeRates = await ethers.getContractFactory('ExchangeRates');
+	const exchangeRatesDeployed = await ExchangeRates.deploy(owner.address);
+	await exchangeRatesDeployed.deployed();
+
+	console.log('exchangeRates deployed to:', exchangeRatesDeployed.address);
+
 	const BinaryOptionMarketManager = await ethers.getContractFactory('BinaryOptionMarketManager', {
 		libraries: {
 			SafeDecimalMath: safeDecimalMath.address,
@@ -69,7 +75,8 @@ async function main() {
 	});
 	const binaryOptionMarketManagerDeployed = await BinaryOptionMarketManager.deploy(
 		owner.address,
-		addressResolver.address,
+		sUSD,
+		exchangeRatesDeployed.address,
 		maxOraclePriceAge,
 		expiryDuration,
 		maxTimeToMaturity,
@@ -102,12 +109,19 @@ async function main() {
 		binaryOptionMarketFactoryDeployed.address
 	);
 
+	// verification
+	await hre.run('verify:verify', {
+		address: exchangeRatesDeployed.address,
+		constructorArguments: [owner.address],
+		contract: 'contracts/ExchangeRate/ExchangeRates.sol:ExchangeRates',
+	});
 
 	await hre.run('verify:verify', {
 		address: binaryOptionMarketManagerDeployed.address,
 		constructorArguments: [
 			owner.address,
-			addressResolver.address,
+			sUSD,
+			exchangeRatesDeployed.address,
 			maxOraclePriceAge,
 			expiryDuration,
 			maxTimeToMaturity,
@@ -116,6 +130,7 @@ async function main() {
 			creatorFee,
 			feeAddress,
 		],
+		contract: 'contracts/BinaryOptions/BinaryOptionMarketManager.sol:BinaryOptionMarketManager',
 	});
 
 	await hre.run('verify:verify', {
@@ -148,9 +163,8 @@ main()
 		process.exit(1);
 	});
 
-
 function delay(time) {
-	return new Promise(function (resolve) {
+	return new Promise(function(resolve) {
 		setTimeout(resolve, time);
 	});
 }
