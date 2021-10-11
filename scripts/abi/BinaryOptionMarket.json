@@ -389,7 +389,7 @@
             "type": "address"
           }
         ],
-        "internalType": "struct IBinaryOptionMarket.BomInitializeParams",
+        "internalType": "struct BinaryOptionParams.BomInitializeParams",
         "name": "_bomInitializeParams",
         "type": "tuple"
       }
