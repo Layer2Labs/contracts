@@ -1,19 +1,16 @@
 pragma solidity ^0.5.16;
+pragma experimental ABIEncoderV2;
 
 // Inheritance
 import "synthetix-2.43.1/contracts/MinimalProxyFactory.sol";
 import "synthetix-2.43.1/contracts/Owned.sol";
 
-// Internal references
+import "synthetix-2.43.1/contracts/interfaces/IERC20.sol";
 import "./BinaryOptionMarket.sol";
-import "synthetix-2.43.1/contracts/interfaces/IExchangeRates.sol";
-import "synthetix-2.43.1/contracts/interfaces/IERC20.sol";
-import "../interfaces/IBinaryOptionMarket.sol";
+import "./BinaryOptionParams.sol";
+import "../interfaces/IExchangeRates.sol";
 
-import "synthetix-2.43.1/contracts/interfaces/IExchangeRates.sol";
-import "synthetix-2.43.1/contracts/interfaces/IERC20.sol";
-
-contract BinaryOptionMarketFactory is MinimalProxyFactory, Owned, IBinaryOptionMarket {
+contract BinaryOptionMarketFactory is MinimalProxyFactory, Owned, BinaryOptionParams {
     /* ========== STATE VARIABLES ========== */
     address public binaryOptionMarketManager;
     address public binaryOptionMarketMastercopy;

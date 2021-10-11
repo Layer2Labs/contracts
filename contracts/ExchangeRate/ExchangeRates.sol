@@ -4,7 +4,7 @@ pragma solidity ^0.5.16;
 import "synthetix-2.43.1/contracts/Owned.sol";
 
 // Inheritance
-import "synthetix-2.43.1/contracts/interfaces/IExchangeRates.sol";
+import "../interfaces/IExchangeRates.sol";
 
 // Libraries
 import "synthetix-2.43.1/contracts/SafeDecimalMath.sol";

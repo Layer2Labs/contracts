@@ -1,9 +1,9 @@
 pragma solidity >=0.4.24;
 
-import "synthetix-2.43.1/contracts/interfaces/IExchangeRates.sol";
 import "synthetix-2.43.1/contracts/interfaces/IERC20.sol";
 import "../interfaces/IBinaryOptionMarketManager.sol";
 import "../interfaces/IBinaryOption.sol";
+import "../interfaces/IExchangeRates.sol";
 
 interface IBinaryOptionMarket {
     /* ========== TYPES ========== */
@@ -16,21 +16,6 @@ interface IBinaryOptionMarket {
     enum Side {
         Long,
         Short
-    }
-
-    struct BomInitializeParams {
-        address owner;
-        address binaryOptionMastercopy;
-        IERC20 sUSD;
-        IExchangeRates exchangeRates;
-        address creator;
-        bytes32 oracleKey;
-        uint strikePrice;
-        uint[2] times; // [maturity, expiry]
-        uint deposit; // sUSD deposit
-        uint[2] fees; // [poolFee, creatorFee]
-        bool customMarket;
-        address iOracleInstanceAddress;
     }
 
     /* ========== VIEWS / VARIABLES ========== */

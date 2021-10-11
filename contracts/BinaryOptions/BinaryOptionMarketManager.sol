@@ -14,8 +14,8 @@ import "./BinaryOptionMarketFactory.sol";
 import "./BinaryOptionMarket.sol";
 import "./BinaryOption.sol";
 import "../interfaces/IBinaryOptionMarket.sol";
-import "synthetix-2.43.1/contracts/interfaces/IExchangeRates.sol";
 import "synthetix-2.43.1/contracts/interfaces/IERC20.sol";
+import "../interfaces/IExchangeRates.sol";
 
 contract BinaryOptionMarketManager is Owned, Pausable, IBinaryOptionMarketManager {
     /* ========== LIBRARIES ========== */
@@ -126,12 +126,6 @@ contract BinaryOptionMarketManager is Owned, Pausable, IBinaryOptionMarketManage
         if (exchangeRates.rateForCurrency(oracleKey) != 0) {
             // But not sUSD
             if (oracleKey == "sUSD") {
-                return false;
-            }
-
-            // and not inverse rates
-            (uint entryPoint, , , , ) = exchangeRates.inversePricing(oracleKey);
-            if (entryPoint != 0) {
                 return false;
             }
 

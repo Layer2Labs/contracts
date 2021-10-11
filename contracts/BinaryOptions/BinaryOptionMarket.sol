@@ -13,10 +13,11 @@ import "synthetix-2.43.1/contracts/SafeDecimalMath.sol";
 // Internal references
 import "./BinaryOptionMarketManager.sol";
 import "./BinaryOption.sol";
-import "synthetix-2.43.1/contracts/interfaces/IExchangeRates.sol";
+import "./BinaryOptionParams.sol";
+import "../interfaces/IExchangeRates.sol";
 import "synthetix-2.43.1/contracts/interfaces/IERC20.sol";
 
-contract BinaryOptionMarket is MinimalProxyFactory, OwnedWithInit, IBinaryOptionMarket {
+contract BinaryOptionMarket is MinimalProxyFactory, OwnedWithInit, IBinaryOptionMarket, BinaryOptionParams {
     /* ========== LIBRARIES ========== */
 
     using SafeMath for uint;
