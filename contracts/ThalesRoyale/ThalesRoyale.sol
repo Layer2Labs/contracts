@@ -93,6 +93,7 @@ contract ThalesRoyale is Owned, Pausable {
     function startRoyale() external {
         require(block.timestamp > (seasonCreationTime[season] + signUpPeriod), "Can't start until signup period expires");
         require(seasonStart[season] == false, "Already started");
+
         roundTargetPrice = priceFeed.rateForCurrency(oracleKey);
         targetPricePerRoundPerSeason[season][1] = roundTargetPrice;
         seasonStart[season] = true;
@@ -100,6 +101,7 @@ contract ThalesRoyale is Owned, Pausable {
         roundInASeasonStartTime[season] = block.timestamp;
         roundInSeasonEndTime[season] = roundInASeasonStartTime[season] + roundLength;
         totalPlayersPerRoundPerSeason[season][1] = signedUpPlayersCount[season];
+        
         emit RoyaleStarted(season);
     }
 
@@ -252,7 +254,6 @@ contract ThalesRoyale is Owned, Pausable {
         require(seasonFinish[season], "Royale must be finished");
         require(numberOfWinners > 0, "There is no alive players left in Royale");
 
-        //uint reward = rewardPerSeason[season];
         rewardPerPlayerPerSeason[season] = rewardPerSeason[season].div(numberOfWinners);
     }
 
