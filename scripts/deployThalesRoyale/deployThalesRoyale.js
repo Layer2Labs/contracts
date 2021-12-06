@@ -50,7 +50,11 @@ async function main() {
 		day * 3,
 		hour * 8,
 		day,
-		week
+		week,
+		1, // season 1
+		false,
+		0,
+		0
 	);
 	await ThalesRoyaleDeployed.deployed();
 	// update deployments.json file
@@ -70,7 +74,11 @@ async function main() {
 			day * 3,
 			hour * 8,
 			day,
-			week
+			week,
+			1, // season 1
+			false,
+			0,
+			0
 		],
 	});
 }

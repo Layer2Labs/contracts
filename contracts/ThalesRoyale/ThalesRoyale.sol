@@ -24,6 +24,9 @@ contract ThalesRoyale is Owned, Pausable {
     uint public roundLength = 24 hours;
     uint public claimTime = 1 weeks;
     uint public roundTargetPrice;
+    bool public isRebuyable;
+    uint public reBuyableUntil;
+    uint public rebuyPercentage;
 
     // per season properties season -> rest
     uint public season = 1; 
@@ -61,7 +64,10 @@ contract ThalesRoyale is Owned, Pausable {
         uint _roundChoosingLength,
         uint _roundLength,
         uint _claimTime,
-        uint _season
+        uint _season,
+        bool _isRebuyable,
+        uint _reBuyableUntil,
+        uint _rebuyPercentage
     ) public Owned(_owner) {
         oracleKey = _oracleKey;
         priceFeed = _priceFeed;
@@ -74,6 +80,9 @@ contract ThalesRoyale is Owned, Pausable {
         claimTime = _claimTime;
         season = _season;
         seasonCreationTime[_season] = block.timestamp;
+        isRebuyable = _isRebuyable;
+        reBuyableUntil = _reBuyableUntil;
+        rebuyPercentage = _rebuyPercentage;
     }
 
     function signUp(uint amount) external {
@@ -85,7 +94,7 @@ contract ThalesRoyale is Owned, Pausable {
         playersPerSeason[season].push(msg.sender);
         signedUpPlayersCount[season]++;
 
-        _buyIn(msg.sender, amount);
+        _buyIn(msg.sender, amount, false);
 
         emit SignedUp(msg.sender, season);
     }
@@ -190,6 +199,35 @@ contract ThalesRoyale is Owned, Pausable {
         }
     }
 
+    function reBuy() external  {
+        require(isRebuyable, "Royale is not supporting rebuys");
+        require(!seasonFinish[season], "Competition finished");        
+        require(reBuyableUntil < roundPerSeason[season] && roundPerSeason[season] > 1, "It is not posible to rebuy in this round, or first round");
+        require(playerSignedUpPerSeason[season][msg.sender] != 0, "Player did not sign up at first place");
+        require(!isPlayerAlive(msg.sender), "You are still alive");
+
+        // getting current profit per player
+        uint currentProfitPerPlayer = rewardPerSeason[season].div(totalPlayersPerRoundPerSeason[roundPerSeason[season]][season]);
+        // amount for rebuy is current profit + precentage of current profit 
+        uint precentageOfCurrentProfit = currentProfitPerPlayer * (rebuyPercentage.div(100));
+
+        uint amount = currentProfitPerPlayer + precentageOfCurrentProfit;
+        require(rewardToken.allowance(msg.sender, address(this)) >= amount, "No allowance.");
+
+        _buyIn(msg.sender, amount, true);
+
+       //make player alive
+       positionInARoundPerSeason[season][msg.sender][roundPerSeason[season] - 1] == roundResultPerSeason[season][roundPerSeason[season] - 1];
+    }
+
+    function isRebayableRoyale() public view returns (bool) {
+        return isRebuyable && !seasonFinish[season] && reBuyableUntil < roundPerSeason[season]  && roundPerSeason[season] > 1;
+    }
+
+    function isRebayableRoyaleForPlayer(address _player) public view returns (bool) {
+        return isRebayableRoyale() && !isPlayerAlive(_player) && playerSignedUpPerSeason[season][msg.sender] != 0;
+    }
+
     function canCloseRound() public view returns (bool) {
         return seasonStart[season] && !seasonFinish[season] && block.timestamp > (roundInASeasonStartTime[season] + roundLength);
     }
@@ -238,6 +276,17 @@ contract ThalesRoyale is Owned, Pausable {
         rounds = _rounds;
     }
 
+    function setIsItRebuyable(bool _isRebuyable) public onlyOwner {
+        isRebuyable = _isRebuyable;
+    }
+
+    function setReBuyableUntil(uint _reBuyableUntil) public onlyOwner {
+        reBuyableUntil = _reBuyableUntil;
+    }
+
+    function setRebuyPercentage(uint _rebuyPercentage) public onlyOwner {
+        rebuyPercentage = _rebuyPercentage;
+    }
 
     function setClaimTime(uint _claimTime) public onlyOwner {
         claimTime = _claimTime;
@@ -265,12 +314,16 @@ contract ThalesRoyale is Owned, Pausable {
         _claimRewardForSeason(_season);
     }
 
-    function _buyIn(address _sender, uint _amount) internal {
+    function _buyIn(address _sender, uint _amount, bool _rebuy) internal {
 
         rewardToken.transferFrom(_sender, address(this), _amount);
         rewardPerSeason[season] += _amount;
 
-        emit BuyIn(_sender, _amount, season);
+        if(_rebuy){
+            emit ReBuy(_sender, _amount, season);
+        }else{
+            emit BuyIn(_sender, _amount, season);
+        }
     }
 
     function _claimRewardForSeason(uint _season) internal {
@@ -309,4 +362,5 @@ contract ThalesRoyale is Owned, Pausable {
     event RoyaleFinished(uint season);
     event RewardClaimed(uint season, address winner, uint reward);
     event NewSeasonStarted(uint season);
+    event ReBuy(address user, uint amount, uint season);
 }

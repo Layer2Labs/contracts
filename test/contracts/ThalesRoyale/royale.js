@@ -66,7 +66,10 @@ contract('ThalesRoyale', accounts => {
 			HOUR * 8,
 			DAY,
 			WEEK,
-			season_1 // season 1
+			season_1, // season 1
+			false,
+			0,
+			0
 		);
 
 		await ThalesDeployed.transfer(royale.address, thalesQty, { from: owner });
