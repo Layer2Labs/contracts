@@ -78,6 +78,7 @@ contract ThalesRoyale is Initializable, ProxyOwned, PausableUpgradeable, ProxyRe
     mapping(uint => uint) public unclaimedRewardPerSeason;
     
     IThalesRoyalePass public royalePass;
+    mapping(uint => uint) public reBuysCountPerSeason;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -250,6 +251,15 @@ contract ThalesRoyale is Initializable, ProxyOwned, PausableUpgradeable, ProxyRe
         _claimRewardForSeason(msg.sender, _season);
     }
 
+    function reBuy() external playerCanReBuy() {
+        _reBuy(msg.sender, 0);
+    }
+
+    function reBuyWithPosition(uint _position) external playerCanReBuy() {
+        require(_position == DOWN || _position == UP, "Position can only be 1 or 2");
+        _reBuy(msg.sender, _position);
+    }
+
     /* ========== VIEW ========== */
 
     function canCloseRound() public view returns (bool) {
@@ -306,6 +316,10 @@ contract ThalesRoyale is Initializable, ProxyOwned, PausableUpgradeable, ProxyRe
 
     function getBuyInAmount() public view returns (uint) {
         return buyInAmount;
+    }
+
+    function calculateRewardPerPlayerInCurrentSeasonInCurrentRound() public view returns (uint) {
+        return rewardPerSeason[season].div(totalPlayersPerRoundPerSeason[season][roundInASeason[season]]);
     }
 
     /* ========== INTERNALS ========== */
@@ -427,6 +441,39 @@ contract ThalesRoyale is Initializable, ProxyOwned, PausableUpgradeable, ProxyRe
         emit PutFunds(_from, _season, _amount);
     }
 
+    function _reBuy(address _player, uint _position) internal {
+
+        uint amount = calculateRewardPerPlayerInCurrentSeasonInCurrentRound();
+
+        // make _player alive
+        totalPlayersPerRoundPerSeason[season][roundInASeason[season]]++;
+        positionInARoundPerSeason[season][_player][roundInASeason[season] - 1] = roundResultPerSeason[season][roundInASeason[season] - 1];
+        
+        // put position if needed
+        if (_position != 0) {
+            _putPosition(_player, season, roundInASeason[season], _position);
+        }
+
+        // safebox calc.
+        (uint amountBuyIn, uint amountSafeBox) = _calculateSafeBoxOnAmount(amount);
+
+        // send into safebox if needed
+        if (amountSafeBox > 0) {
+            rewardToken.safeTransferFrom(_player, safeBox, amountSafeBox);
+        }
+
+        // adding reward
+        rewardPerSeason[season] = rewardPerSeason[season] + amountBuyIn;
+        unclaimedRewardPerSeason[season] = unclaimedRewardPerSeason[season] + amountBuyIn;
+
+        //send sUSD to contract
+        rewardToken.safeTransferFrom(_player, address(this), amountBuyIn);
+
+        reBuysCountPerSeason[season]++;
+        
+        emit ReBuy(_player, amount, season, roundInASeason[season], reBuysCountPerSeason[season]);
+    }
+
     /* ========== CONTRACT MANAGEMENT ========== */
 
     function putFunds(uint _amount, uint _season) external {
@@ -522,6 +569,18 @@ contract ThalesRoyale is Initializable, ProxyOwned, PausableUpgradeable, ProxyRe
         _;
     }
 
+    modifier playerCanReBuy() {
+        require(!isPlayerAlive(msg.sender), "Player is still alive");
+        require(playerSignedUpPerSeason[season][msg.sender] != 0, "Player did not sign up");
+        require(royaleInSeasonStarted[season], "Competition not started yet");
+        require(!seasonFinished[season], "Competition finished");
+        require(roundInASeason[season] > 1, "Can't re-buy in first round");
+        require(block.timestamp < roundInASeasonStartTime[season] + roundChoosingLength, "Round positioning finished");
+        require(rewardToken.balanceOf(msg.sender) >= calculateRewardPerPlayerInCurrentSeasonInCurrentRound(), "No enough sUSD for re-buy");
+        require(rewardToken.allowance(msg.sender, address(this)) >= calculateRewardPerPlayerInCurrentSeasonInCurrentRound(), "No allowance.");
+        _;
+    }
+
     /* ========== EVENTS ========== */
 
     event SignedUp(address user, uint season);
@@ -542,4 +601,5 @@ contract ThalesRoyale is Initializable, ProxyOwned, PausableUpgradeable, ProxyRe
     event NewSafeBoxPercentage(uint _safeBoxPercentage);
     event NewSafeBox(address _safeBox);
     event NewThalesRoyalePass(address _royalePass);
+    event ReBuy(address _player, uint _amount, uint _season, uint _round, uint _reBuyCount);
 }
